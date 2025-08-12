@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Simple Pong Game</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background-color: #1a1a1a;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    
+    #gameContainer {
+      border: 2px solid white;
+    }
+    
+    #gameCanvas {
+      background-color: #000;
+    }
+    
+    .score {
+      font-size: 2em;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Simple Pong Game</h1>
+  <div class="score">Player: 0 | Computer: 0</div>
+  <div id="gameContainer">
+    <canvas id="gameCanvas" width="700" height="400"></canvas>
+  </div>
+
+  <script>
+    // 等待DOM完全加载
+    document.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById('gameCanvas');
+      const ctx = canvas.getContext('2d');
+      const scoreDisplay = document.querySelector('.score');
+      
+      // 游戏对象
+      const paddleWidth = 10;
+      const paddleHeight = 80;
+      const ballSize = 10;
+      
+      // 玩家 paddle
+      const player = {
+        x: 20,
+        y: canvas.height / 2 - paddleHeight / 2,
+        width: paddleWidth,
+        height: paddleHeight,
+        speed: 7,
+        dy: 0,
+        score: 0
+      };
+      
+      // 电脑 paddle
+      const computer = {
+        x: canvas.width - paddleWidth - 20,
+        y: canvas.height / 2 - paddleHeight / 2,
+        width: paddleWidth,
+        height: paddleHeight,
+        speed: 5,
+        dy: 0,
+        score: 0
+      };
+      
+      // 球
+      const ball = {
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        size: ballSize,
+        speed: 5,
+        dx: 5,
+        dy: 5
+      };
+      
+      // 绘制矩形
+      function drawRect(x, y, width, height, color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, width, height);
+      }
+      
+      // 绘制球
+      function drawBall(x, y, size, color) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // 更新分数
+      function updateScore() {
+        scoreDisplay.textContent = `Player: ${player.score} | Computer: ${computer.score}`;
+      }
+      
+      // 重置球
+      function resetBall() {
+        ball.x = canvas.width / 2;
+        ball.y = canvas.height / 2;
+        // 重置方向，让球向得分方的对手移动
+        ball.dx = -ball.dx;
+        ball.dy = (Math.random() - 0.5) * 10; // 随机垂直方向
+      }
+      
+      // 检测碰撞
+      function checkCollision(ball, paddle) {
+        return ball.x + ball.size > paddle.x &&
+               ball.x - ball.size < paddle.x + paddle.width &&
+               ball.y + ball.size > paddle.y &&
+               ball.y - ball.size < paddle.y + paddle.height;
+      }
+      
+      // 移动电脑 paddle
+      function moveComputer() {
+        // 简单AI逻辑
+        if (ball.y < computer.y + computer.height / 2) {
+          computer.dy = -computer.speed;
+        } else if (ball.y > computer.y + computer.height / 2) {
+          computer.dy = computer.speed;
+        } else {
+          computer.dy = 0;
+        }
+        
+        // 限制电脑 paddle 在画布内
+        if (computer.y < 0) {
+          computer.y = 0;
+        } else if (computer.y + computer.height > canvas.height) {
+          computer.y = canvas.height - computer.height;
+        } else {
+          computer.y += computer.dy;
+        }
+      }
+      
+      // 绘制游戏
+      function draw() {
+        // 清空画布
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // 绘制元素
+        drawRect(player.x, player.y, player.width, player.height, 'white');
+        drawRect(computer.x, computer.y, computer.width, computer.height, 'white');
+        drawBall(ball.x, ball.y, ball.size, 'white');
+        
+        // 移动球
+        ball.x += ball.dx;
+        ball.y += ball.dy;
+        
+        // 球碰撞上下边界
+        if (ball.y - ball.size < 0 || ball.y + ball.size > canvas.height) {
+          ball.dy = -ball.dy;
+        }
+        
+        // 得分检测
+        if (ball.x - ball.size < 0) {
+          // 电脑得分
+          computer.score++;
+          updateScore();
+          resetBall();
+        } else if (ball.x + ball.size > canvas.width) {
+          // 玩家得分
+          player.score++;
+          updateScore();
+          resetBall();
+        }
+        
+        // 碰撞检测
+        if (checkCollision(ball, player) || checkCollision(ball, computer)) {
+          ball.dx = -ball.dx;
+          // 增加球速，增加游戏难度
+          ball.speed *= 1.02;
+          ball.dx *= 1.02;
+          ball.dy *= 1.02;
+        }
+        
+        // 移动电脑
+        moveComputer();
+        
+        // 玩家 paddle 移动限制
+        if (player.y < 0) {
+          player.y = 0;
+        } else if (player.y + player.height > canvas.height) {
+          player.y = canvas.height - player.height;
+        }
+        
+        requestAnimationFrame(draw);
+      }
+      
+      // 键盘控制
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowUp') {
+          player.dy = -player.speed;
+        } else if (e.key === 'ArrowDown') {
+          player.dy = player.speed;
+        }
+      });
+      
+      document.addEventListener('keyup', (e) => {
+        if (e.key === 'ArrowUp' && player.dy < 0) {
+          player.dy = 0;
+        } else if (e.key === 'ArrowDown' && player.dy > 0) {
+          player.dy = 0;
+        }
+      });
+      
+      // 鼠标控制
+      canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        player.y = e.clientY - rect.top - player.height / 2;
+      });
+      
+      // 触摸控制
+      canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        const rect = canvas.getBoundingClientRect();
+        const touchY = e.touches[0].clientY - rect.top;
+        player.y = touchY - player.height / 2;
+      }, { passive: false });
+      
+      // 开始游戏循环
+      function gameLoop() {
+        player.y += player.dy;
+        draw();
+        requestAnimationFrame(gameLoop);
+      }
+      
+      // 初始化游戏
+      updateScore();
+      gameLoop();
+    });
+  </script>
+</body>
+</html>
+    
